@@ -1,10 +1,9 @@
 
 # Simple webcam streaming server using Flask and OpenCV
-
-from flask import Blueprint, Response, render_template_string
+from flask import Flask, Response, render_template_string
 import cv2
 
-webcam_api = Blueprint('webcam_api', __name__)
+app = Flask(__name__)
 
 def gen_frames():
 	cap = cv2.VideoCapture(0)
@@ -19,8 +18,9 @@ def gen_frames():
 		yield (b'--frame\r\n'
 			   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-@webcam_api.route('/')
+@app.route('/')
 def index():
+	# Simple HTML page to show the video stream
 	return render_template_string('''
 	<!DOCTYPE html>
 	<html lang="en">
@@ -43,7 +43,10 @@ def index():
 	</html>
 	''')
 
-@webcam_api.route('/video_feed')
+@app.route('/video_feed')
 def video_feed():
 	return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+	app.run(host='0.0.0.0', port=5000, debug=False)
 
