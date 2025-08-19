@@ -5,6 +5,9 @@ import cv2
 
 app = Flask(__name__)
 
+from sensors_data_api import sensors_api
+app.register_blueprint(sensors_api)
+
 def gen_frames():
 	cap = cv2.VideoCapture(0)
 	if not cap.isOpened():
