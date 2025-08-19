@@ -102,9 +102,18 @@ for c in "Welcome":
 	lcd_write_char(c)
 time.sleep(2)
 
+# --- Data sharing import ---
+try:
+	import pico_data_share
+except ImportError:
+	pico_data_share = None
+
 # --- Main loop ---
 while True:
 	temp, humi = read_dht11(1)
+	# Share data with Pi if possible
+	if pico_data_share:
+		pico_data_share.send_status(temp, humi)
 	# LED logic
 	if temp is not None:
 		if 20 <= temp <= 30:
