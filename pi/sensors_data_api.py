@@ -7,7 +7,7 @@ import threading
 
 sensors_api = Blueprint('sensors_api', __name__)
 
-sensor_data = {'temp': None, 'humi': None}
+sensor_data = {'temp': None, 'humi': None, 'moisture': None}
 SERIAL_PORT = '/dev/ttyACM0'  # Update if your Pico appears as a different device
 BAUDRATE = 115200
 
@@ -20,9 +20,17 @@ def serial_reader():
             line = ser.readline().decode().strip()
             if line:
                 try:
-                    temp, humi = line.split(',')
-                    sensor_data['temp'] = float(temp)
-                    sensor_data['humi'] = float(humi)
+                    parts = line.split(',')
+                    if len(parts) == 3:
+                        temp, humi, moisture = parts
+                        sensor_data['temp'] = float(temp)
+                        sensor_data['humi'] = float(humi)
+                        sensor_data['moisture'] = int(moisture)
+                    elif len(parts) == 2:
+                        temp, humi = parts
+                        sensor_data['temp'] = float(temp)
+                        sensor_data['humi'] = float(humi)
+                        sensor_data['moisture'] = None
                 except Exception:
                     continue
     except Exception as e:
