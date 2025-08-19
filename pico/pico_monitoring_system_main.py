@@ -1,4 +1,4 @@
-from machine import I2C, Pin, PWM
+from machine import I2C, Pin
 import time
 
 # --- Minimal DHT11 read (blocking, bit-bang) ---
@@ -82,18 +82,59 @@ lcd_write_cmd(0x0C)
 lcd_write_cmd(0x06)
 lcd_clear()
 
-# --- RGB LED setup (assume common cathode, pins 16/17/18) ---
-led_r = PWM(Pin(16))
-led_g = PWM(Pin(17))
-led_b = PWM(Pin(18))
-for led in (led_r, led_g, led_b):
-	led.freq(1000)
 
-def set_led(r, g, b):
-	# PWM duty: 0=off, 65535=full
-	led_r.duty_u16(65535 - int(r * 65535 / 255))
-	led_g.duty_u16(65535 - int(g * 65535 / 255))
-	led_b.duty_u16(65535 - int(b * 65535 / 255))
+
+# --- ws2812b RGB LED bar setup (using rdb.py logic, data on GPIO15) ---
+import array
+import rp2
+
+@rp2.asm_pio(sideset_init=rp2.PIO.OUT_LOW, out_shiftdir=rp2.PIO.SHIFT_LEFT, autopull=True, pull_thresh=24)
+def ws2812():
+	T1 = 2
+	T2 = 5
+	T3 = 3
+	wrap_target()
+	label("bitloop")
+	out(x, 1)               .side(0)    [T3 - 1]
+	jmp(not_x, "do_zero")   .side(1)    [T1 - 1]
+	jmp("bitloop")          .side(1)    [T2 - 1]
+	label("do_zero")
+	nop()                   .side(0)    [T2 - 1]
+	wrap()
+
+class ws2812b:
+	def __init__(self, num_leds, state_machine, pin, delay=0.001):
+		self.pixels = array.array("I", [0 for _ in range(num_leds)])
+		self.sm = rp2.StateMachine(state_machine, ws2812, freq=8000000, sideset_base=Pin(pin))
+		self.sm.active(1)
+		self.num_leds = num_leds
+		self.delay = delay
+		self.brightnessvalue = 255
+	def brightness(self, brightness = None):
+		if brightness == None:
+			return self.brightnessvalue
+		else:
+			if (brightness < 1):
+				brightness = 1
+		if (brightness > 255):
+			brightness = 255
+		self.brightnessvalue = brightness
+	def set_pixel(self, pixel_num, red, green, blue):
+		blue = round(blue * (self.brightness() / 255))
+		red = round(red * (self.brightness() / 255))
+		green = round(green * (self.brightness() / 255))
+		self.pixels[pixel_num] = blue | red << 8 | green << 16
+	def show(self):
+		for i in range(self.num_leds):
+			self.sm.put(self.pixels[i],8)
+		time.sleep(self.delay)
+	def fill(self, red, green, blue):
+		for i in range(self.num_leds):
+			self.set_pixel(i, red, green, blue)
+		self.show()
+
+# Initialize ws2812b bar (1 LED, state machine 0, data pin 15)
+led_bar = ws2812b(1, 0, 15)
 
 # --- Show welcome message ---
 lcd_clear()
@@ -102,33 +143,51 @@ for c in "Welcome":
 	lcd_write_char(c)
 time.sleep(2)
 
-# --- Data sharing import ---
-try:
-	import pico_data_share
-except ImportError:
-	pico_data_share = None
+# --- Moisture sensor setup (digital, e.g. GP14) ---
+moisture_pin = Pin(14, Pin.IN, Pin.PULL_UP)
+last_orange = 0
 
 # --- Main loop ---
 while True:
 	temp, humi = read_dht11(1)
-	# Share data with Pi if possible
-	if pico_data_share:
-		pico_data_share.send_status(temp, humi)
-	# LED logic
-	if temp is not None:
-		if 20 <= temp <= 30:
-			set_led(0, 255, 0)  # Green
-		elif temp > 30:
-			set_led(255, 0, 0)  # Red
+	moisture = moisture_pin.value()  # 1 = wet, 0 = dry
+	now = time.ticks_ms()
+	show_alert = False
+	# Moisture check: flash orange and show alert only briefly
+	if moisture == 0:
+		if time.ticks_diff(now, last_orange) > 5000:
+			led_bar.fill(255, 128, 0)  # Orange
+			last_orange = now
+			show_alert = True
 		else:
-			set_led(0, 0, 255)  # Blue
+			led_bar.fill(0, 0, 0)  # Off between flashes
+	# LED bar color logic if not dry
+	elif temp is not None:
+		if 20 <= temp <= 30:
+			led_bar.fill(0, 255, 0)  # Green
+		elif temp > 30:
+			led_bar.fill(255, 0, 0)  # Red
+		else:
+			led_bar.fill(0, 0, 255)  # Blue
 	else:
-		set_led(0, 0, 0)
+		led_bar.fill(0, 0, 0)  # Off
+
 	# LCD display
 	lcd_clear()
 	lcd_move_to(0, 0)
+	if show_alert:
+		for c in "Water the plants":
+			lcd_write_char(c)
+		lcd_move_to(0, 1)
+		for c in "Moisture: Dry":
+			lcd_write_char(c)
+		time.sleep(2)
+		continue
 	if temp is not None and humi is not None:
 		for c in "T:{}C H:{}%".format(temp, humi):
+			lcd_write_char(c)
+		lcd_move_to(0, 1)
+		for c in ("Moisture: Dry" if moisture == 0 else "Moisture: Wet"):
 			lcd_write_char(c)
 	else:
 		for c in "Sensor Error":
