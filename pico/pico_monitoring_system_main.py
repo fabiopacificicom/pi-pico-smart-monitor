@@ -1,4 +1,5 @@
 from machine import I2C, Pin
+import pico_data_share
 import time
 
 # --- Minimal DHT11 read (blocking, bit-bang) ---
@@ -153,6 +154,9 @@ while True:
 	moisture = moisture_pin.value()  # 1 = wet, 0 = dry
 	now = time.ticks_ms()
 	show_alert = False
+	# Send data to Pi via USB serial
+	if temp is not None and humi is not None:
+		pico_data_share.send_status(temp, humi, moisture)
 	# Moisture check: flash orange and show alert only briefly
 	if moisture == 0:
 		if time.ticks_diff(now, last_orange) > 5000:
