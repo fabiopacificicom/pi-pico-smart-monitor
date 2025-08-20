@@ -18,17 +18,20 @@ This document details the confirmed approach for implementing a plant health che
 1. **Image Capture:** Use the Pi camera to capture plant images.
 2. **Leaf Detection:** Run YOLOv5 Nano to detect leaves in the captured image.
 3. **Cropping:** Use OpenCV to crop detected leaf regions.
-4. **Dataset Building:** Save cropped images for dataset creation and labeling.
+4. **Dataset Building:** Save cropped images for dataset creation and labeling during the prototyping phase. Once a sufficient dataset is collected and a custom model is trained, saving crops can be disabled to conserve disk space.
 5. **(Optional) Health Classification:** Add a classifier for leaf health status in a future phase (e.g., using TensorFlow Lite or custom model).
 6. **REST API Integration:** Expose detection/cropping results via Flask REST API.
 
 ## Implementation Steps
 
 1. **Prototype Detection & Cropping:**
-   - Run YOLOv5 Nano (pre-trained) on sample images to detect leaves.
-   - Use OpenCV to crop detected regions and save them to disk.
+   - Capture a frame from the Pi webcam on demand using OpenCV.
+   - Run YOLOv5 Nano (pre-trained) on the captured frame to detect leaves.
+   - Use OpenCV to crop detected regions and save them to disk automatically.
+   - Expose a Flask endpoint (`/plant_health/capture_and_detect`) to trigger this process both manually (from Home Assistant) and automatically (via daily cron job or scheduled task).
 2. **Dataset Building:**
    - Organize and label cropped images for future training.
+   - Saving crops is only required during the initial prototyping/dataset-building phase. After model training, disable or limit crop saving to conserve disk space.
 3. **Evaluate Detection:**
    - Assess detection accuracy; if needed, plan for custom training.
 4. **Integrate with REST API:**

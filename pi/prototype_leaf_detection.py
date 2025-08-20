@@ -1,25 +1,26 @@
-"""
-Prototype: Leaf Detection and Cropping with YOLOv5 Nano (pre-trained)
 
-- Loads a YOLOv5 Nano model (Torch Hub or local .pt file)
-- Runs detection on all images in test_images/
+"""
+Prototype: On-Demand Leaf Detection and Cropping with YOLOv5 Nano (pre-trained)
+
+- Captures a frame from the Pi webcam using OpenCV
+- Runs YOLOv5 Nano detection on the captured frame
 - Crops detected leaves and saves them to leaf_crops/
-- Designed for prototyping and dataset building
+- Exposes a Flask endpoint to trigger the process remotely
 
 Requirements:
 - torch
 - torchvision
 - opencv-python
-- (Download YOLOv5 Nano weights if not using Torch Hub)
+- flask
 """
 
 import os
 import cv2
 import torch
 from pathlib import Path
+from flask import Flask, jsonify
 
 # Paths
-TEST_IMAGES_DIR = Path(__file__).parent / 'test_images'
 CROPS_DIR = Path(__file__).parent / 'leaf_crops'
 CROPS_DIR.mkdir(exist_ok=True)
 
@@ -27,25 +28,35 @@ CROPS_DIR.mkdir(exist_ok=True)
 model = torch.hub.load('ultralytics/yolov5', 'yolov5n', pretrained=True)
 model.conf = 0.3  # confidence threshold
 
-# Supported image extensions
-IMG_EXTS = ['.jpg', '.jpeg', '.png']
-
-for img_path in TEST_IMAGES_DIR.iterdir():
-    if img_path.suffix.lower() not in IMG_EXTS:
-        continue
-    img = cv2.imread(str(img_path))
-    if img is None:
-        print(f"Failed to load {img_path}")
-        continue
-    # Run detection
-    results = model(img)
-    # results.xyxy[0]: [x1, y1, x2, y2, conf, cls]
+def capture_and_detect_and_crop():
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        raise RuntimeError("Could not open webcam.")
+    ret, frame = cap.read()
+    cap.release()
+    if not ret:
+        raise RuntimeError("Failed to capture frame from webcam.")
+    results = model(frame)
+    crops = []
     for i, det in enumerate(results.xyxy[0]):
         x1, y1, x2, y2, conf, cls = det.tolist()
-        # Optionally, filter for 'plant' or 'leaf' class if available
-        crop = img[int(y1):int(y2), int(x1):int(x2)]
-        crop_name = f"{img_path.stem}_crop_{i}.jpg"
+        crop = frame[int(y1):int(y2), int(x1):int(x2)]
+        crop_name = f"capture_crop_{i}.jpg"
         crop_path = CROPS_DIR / crop_name
         cv2.imwrite(str(crop_path), crop)
-        print(f"Saved crop: {crop_path}")
-print("Done. Check leaf_crops/ for results.")
+        crops.append(str(crop_path))
+    return crops
+
+# Flask app for on-demand capture and detection
+app = Flask(__name__)
+
+@app.route('/plant_health/capture_and_detect', methods=['POST', 'GET'])
+def plant_health_capture_and_detect():
+    try:
+        crops = capture_and_detect_and_crop()
+        return jsonify({"status": "ok", "num_crops": len(crops), "crops": crops})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5050, debug=False)

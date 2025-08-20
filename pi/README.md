@@ -14,7 +14,6 @@ Install dependencies with:
 pip install flask opencv-python
 ```
 
-
 ## Available Routes
 
 ### `/`
