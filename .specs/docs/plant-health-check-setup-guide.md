@@ -17,7 +17,7 @@ Run the following commands in your Pi terminal:
 ```bash
 sudo apt update
 sudo apt install python3-pip python3-opencv libopencv-dev
-pip3 install torch torchvision flask opencv-python
+pip3 install torch torchvision flask opencv-python ultralytics seaborn
 ```
 
 ## 3. Download the Code
@@ -46,27 +46,25 @@ curl http://<PI_IP>:5050/plant_health/capture_and_detect
 - The response will show the number of crops and their file paths.
 - Cropped images will be saved in the `leaf_crops/` directory.
 
-
 ## 6. Integrate with Home Assistant (Optional)
 
 Add a RESTful sensor in Home Assistant to call the endpoint and display results. Example configuration (add to your `configuration.yaml`):
 
 ```yaml
 sensor:
-	- platform: rest
-		name: Plant Health Check
-		resource: "http://<PI_IP>:5050/plant_health/capture_and_detect"
-		method: GET
-		scan_interval: 3600  # Check every hour (or set to 86400 for once per day)
-		value_template: "{{ value_json.status }}"
-		json_attributes:
-			- num_crops
-			- crops
-		timeout: 60
+ - platform: rest
+  name: Plant Health Check
+  resource: "http://<PI_IP>:5050/plant_health/capture_and_detect"
+  method: GET
+  scan_interval: 3600  # Check every hour (or set to 86400 for once per day)
+  value_template: "{{ value_json.status }}"
+  json_attributes:
+   - num_crops
+   - crops
+  timeout: 60
 ```
 
 Replace `<PI_IP>` with your Pi's IP address. This sensor will show the status and number of crops; you can use the attributes in a dashboard card or automation.
-
 
 ## 7. Automate with Cron (Optional)
 

@@ -38,13 +38,21 @@ def capture_and_detect_and_crop():
         raise RuntimeError("Failed to capture frame from webcam.")
     results = model(frame)
     crops = []
-    for i, det in enumerate(results.xyxy[0]):
-        x1, y1, x2, y2, conf, cls = det.tolist()
-        crop = frame[int(y1):int(y2), int(x1):int(x2)]
-        crop_name = f"capture_crop_{i}.jpg"
+    dets = results.xyxy[0]
+    if len(dets) == 0:
+        # No detections: save the whole frame as a fallback crop
+        crop_name = "capture_crop_full.jpg"
         crop_path = CROPS_DIR / crop_name
-        cv2.imwrite(str(crop_path), crop)
+        cv2.imwrite(str(crop_path), frame)
         crops.append(str(crop_path))
+    else:
+        for i, det in enumerate(dets):
+            x1, y1, x2, y2, conf, cls = det.tolist()
+            crop = frame[int(y1):int(y2), int(x1):int(x2)]
+            crop_name = f"capture_crop_{i}.jpg"
+            crop_path = CROPS_DIR / crop_name
+            cv2.imwrite(str(crop_path), crop)
+            crops.append(str(crop_path))
     return crops
 
 # Flask app for on-demand capture and detection
