@@ -18,7 +18,7 @@ import os
 import cv2
 import torch
 from pathlib import Path
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 
 # Paths
 CROPS_DIR = Path(__file__).parent / 'leaf_crops'
@@ -39,24 +39,47 @@ def capture_and_detect_and_crop():
     results = model(frame)
     crops = []
     dets = results.xyxy[0]
-    if len(dets) == 0:
-        # No detections: save the whole frame as a fallback crop
-        crop_name = "capture_crop_full.jpg"
-        crop_path = CROPS_DIR / crop_name
-        cv2.imwrite(str(crop_path), frame)
-        crops.append(str(crop_path))
-    else:
-        for i, det in enumerate(dets):
-            x1, y1, x2, y2, conf, cls = det.tolist()
+    names = model.names if hasattr(model, 'names') else {}
+    print(f"Detections: {len(dets)}")
+    for i, det in enumerate(dets):
+        x1, y1, x2, y2, conf, cls = det.tolist()
+        label = names.get(int(cls), str(cls))
+        print(f"Detection {i}: class={label}, conf={conf:.2f}, box=({x1:.0f},{y1:.0f},{x2:.0f},{y2:.0f})")
+        if conf >= model.conf:
             crop = frame[int(y1):int(y2), int(x1):int(x2)]
-            crop_name = f"capture_crop_{i}.jpg"
+            crop_name = f"capture_crop_{i}_{label}.jpg"
             crop_path = CROPS_DIR / crop_name
             cv2.imwrite(str(crop_path), crop)
             crops.append(str(crop_path))
+    if not crops:
+        print("No objects detected above confidence threshold. Splitting full frame into grid crops.")
+        # Split the frame into a grid (e.g., 4x4)
+        grid_rows, grid_cols = 4, 4
+        h, w, _ = frame.shape
+        crop_h, crop_w = h // grid_rows, w // grid_cols
+        crop_count = 0
+        for row in range(grid_rows):
+            for col in range(grid_cols):
+                y1 = row * crop_h
+                y2 = (row + 1) * crop_h if row < grid_rows - 1 else h
+                x1 = col * crop_w
+                x2 = (col + 1) * crop_w if col < grid_cols - 1 else w
+                crop = frame[y1:y2, x1:x2]
+                crop_name = f"capture_crop_grid_{row}_{col}.jpg"
+                crop_path = CROPS_DIR / crop_name
+                cv2.imwrite(str(crop_path), crop)
+                crops.append(str(crop_path))
+                crop_count += 1
+        print(f"Saved {crop_count} grid crops.")
     return crops
 
 # Flask app for on-demand capture and detection
 app = Flask(__name__)
+
+# Serve crops as static files
+@app.route('/crops/<path:filename>')
+def serve_crop(filename):
+    return send_from_directory(str(CROPS_DIR), filename)
 
 @app.route('/plant_health/capture_and_detect', methods=['POST', 'GET'])
 def plant_health_capture_and_detect():
