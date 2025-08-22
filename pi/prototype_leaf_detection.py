@@ -18,7 +18,7 @@ import os
 import cv2
 import torch
 from pathlib import Path
-from flask import Flask, jsonify, send_from_directory
+from flask import Blueprint, jsonify, send_from_directory
 
 # Paths
 CROPS_DIR = Path(__file__).parent / 'leaf_crops'
@@ -50,7 +50,7 @@ def capture_and_detect_and_crop():
             crop_name = f"capture_crop_{i}_{label}.jpg"
             crop_path = CROPS_DIR / crop_name
             cv2.imwrite(str(crop_path), crop)
-            crops.append(str(crop_path))
+            crops.append(crop_name)
     if not crops:
         print("No objects detected above confidence threshold. Splitting full frame into grid crops.")
         # Split the frame into a grid (e.g., 4x4)
@@ -68,26 +68,24 @@ def capture_and_detect_and_crop():
                 crop_name = f"capture_crop_grid_{row}_{col}.jpg"
                 crop_path = CROPS_DIR / crop_name
                 cv2.imwrite(str(crop_path), crop)
-                crops.append(str(crop_path))
+                crops.append(crop_name)
                 crop_count += 1
         print(f"Saved {crop_count} grid crops.")
     return crops
 
-# Flask app for on-demand capture and detection
-app = Flask(__name__)
 
-# Serve crops as static files
-@app.route('/crops/<path:filename>')
+# Flask Blueprint for plant health check
+plant_health_api = Blueprint('plant_health_api', __name__)
+
+@plant_health_api.route('/crops/<path:filename>')
 def serve_crop(filename):
     return send_from_directory(str(CROPS_DIR), filename)
 
-@app.route('/plant_health/capture_and_detect', methods=['POST', 'GET'])
+@plant_health_api.route('/plant_health/capture_and_detect', methods=['POST', 'GET'])
 def plant_health_capture_and_detect():
     try:
         crops = capture_and_detect_and_crop()
-        return jsonify({"status": "ok", "num_crops": len(crops), "crops": crops})
+        crop_urls = [f"/crops/{name}" for name in crops]
+        return jsonify({"status": "ok", "num_crops": len(crop_urls), "crops": crop_urls})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5050, debug=False)

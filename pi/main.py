@@ -1,12 +1,18 @@
 
 # Simple webcam streaming server using Flask and OpenCV
 from flask import Flask, Response, render_template_string
+from prototype_leaf_detection import plant_health_api
 import cv2
 
 app = Flask(__name__)
 
+
 from sensors_data_api import sensors_api
+# Register sensors API blueprint
 app.register_blueprint(sensors_api)
+
+# Register plant health check blueprint
+app.register_blueprint(plant_health_api)
 
 def gen_frames():
 	cap = cv2.VideoCapture(0)

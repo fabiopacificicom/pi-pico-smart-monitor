@@ -71,13 +71,28 @@ Replace `<PI_IP>` with your Pi's IP address. This sensor will show the status an
 To trigger the health check automatically every hour between 3:00 PM and 7:00 AM (overnight and afternoon), add the following lines to your crontab (`crontab -e`):
 
 ```
-0 15-23 * * * curl -s http://127.0.0.1:5050/plant_health/capture_and_detect
-0 0-7   * * * curl -s http://127.0.0.1:5050/plant_health/capture_and_detect
+0 15-23 * * * curl -s http://127.0.0.1:5000/plant_health/capture_and_detect
+0 0-7   * * * curl -s http://127.0.0.1:5000/plant_health/capture_and_detect
 ```
 
 This will run the check at the start of every hour from 15:00 to 07:00. Adjust as needed for your use case.
 
-## 8. Notes
+## 8. Labeling and Building Your Cannabis Dataset
+
+- Each crop is saved as a static image and can be viewed in your browser at:
+  `http://<PI_IP>:5050/crops/<filename>`
+- For cannabis, you will need to label each crop as "healthy" or with a specific disease (if known).
+- You can keep a spreadsheet or text file mapping filenames to labels, or use a simple web UI for labeling (future improvement).
+- Periodically download your crops and labels for training a custom classifier.
+- No public cannabis disease classifier exists, so this workflow is essential for your use case.
+
+## 9. Improving the Cropping Strategy
+
+- The current approach splits the frame into a 4x4 grid if no objects are detected, maximizing the chance of capturing leaves.
+- You can adjust the grid size in the script (see `grid_rows, grid_cols = 4, 4`).
+- For more advanced cropping, consider overlapping crops or using a sliding window in the future.
+
+---
 
 - The first run will download YOLOv5 weights (requires internet).
 - For dataset building, crops are saved on every trigger. You can disable this later for production.
