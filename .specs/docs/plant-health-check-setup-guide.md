@@ -48,56 +48,182 @@ curl http://<PI_IP>:5050/plant_health/capture_and_detect
 
 ## 6. Integrate with Home Assistant (Optional)
 
+### Home Assistant Integration: Thumbnails and Trigger Button
+
 Add a RESTful sensor in Home Assistant to call the endpoint and display results. Example configuration (add to your `configuration.yaml`):
 
 ```yaml
+
+# Plant Health Check Setup Guide
+
+## Overview
+
+This guide explains how to set up the plant health check pipeline on your Raspberry Pi, integrate it with Home Assistant, and automate the process of capturing, cropping, and labeling plant images for dataset building and monitoring.
+
+**Key Features:**
+- Automated image capture and disease detection using YOLOv5 Nano
+- REST API for triggering detection and serving crop images
+- Home Assistant integration for automation and UI (thumbnails, trigger button)
+- Browser-based crop viewing and labeling
+
+---
+
+## 1. Prerequisites
+
+- Raspberry Pi with camera module
+- Python 3.8+
+- Flask, OpenCV, YOLOv5 Nano (see `requirements.txt`)
+- Home Assistant (core or OS)
+
+---
+
+## 2. Running the Plant Health Server
+
+1. On your Raspberry Pi, run the Flask server:
+   ```bash
+   python3 main.py
+   # or
+   python3 prototype_leaf_detection.py
+   ```
+
+   By default, the server runs on port 5000.
+
+2. The API exposes:
+   - `POST /plant_health/capture_and_detect` — triggers capture, detection, and crop saving
+   - `GET /crops/<filename>` — serves crop images
+
+---
+
+## 3. Home Assistant Integration (configuration.yaml)
+
+Add the following to your `configuration.yaml` to enable full backend integration. This setup covers all possible automation and UI backend elements that can be handled via YAML. For advanced UI (gallery, dynamic thumbnails), see the Lovelace section below.
+
+### RESTful Sensor (fetch crop list and count)
+
+```yaml
 sensor:
- - platform: rest
-  name: Plant Health Check
-  resource: "http://<PI_IP>:5050/plant_health/capture_and_detect"
-  method: GET
-  scan_interval: 3600  # Check every hour (or set to 86400 for once per day)
-  value_template: "{{ value_json.status }}"
-  json_attributes:
-   - num_crops
-   - crops
-  timeout: 60
+  - platform: rest
+    name: Plant Crop List
+    resource: http://<PI_IP>:5000/plant_health/capture_and_detect
+    method: POST
+    scan_interval: 3600  # every hour, or adjust as needed
+    value_template: "{{ value_json.crops | length }}"
+    json_attributes:
+      - crops
 ```
 
-Replace `<PI_IP>` with your Pi's IP address. This sensor will show the status and number of crops; you can use the attributes in a dashboard card or automation.
+### REST Command (trigger detection)
 
-## 7. Automate with Cron (Optional)
-
-To trigger the health check automatically every hour between 3:00 PM and 7:00 AM (overnight and afternoon), add the following lines to your crontab (`crontab -e`):
-
-```
-0 15-23 * * * curl -s http://127.0.0.1:5000/plant_health/capture_and_detect
-0 0-7   * * * curl -s http://127.0.0.1:5000/plant_health/capture_and_detect
+```yaml
+rest_command:
+  plant_health_capture:
+    url: "http://<PI_IP>:5000/plant_health/capture_and_detect"
+    method: POST
 ```
 
-This will run the check at the start of every hour from 15:00 to 07:00. Adjust as needed for your use case.
+### Input Button (for manual trigger)
 
-## 8. Labeling and Building Your Cannabis Dataset
+```yaml
+input_button:
+  plant_health_capture:
+    name: Capture Plant Health
+```
 
-- Each crop is saved as a static image and can be viewed in your browser at:
-  `http://<PI_IP>:5050/crops/<filename>`
-- For cannabis, you will need to label each crop as "healthy" or with a specific disease (if known).
-- You can keep a spreadsheet or text file mapping filenames to labels, or use a simple web UI for labeling (future improvement).
-- Periodically download your crops and labels for training a custom classifier.
-- No public cannabis disease classifier exists, so this workflow is essential for your use case.
+### Automation (trigger detection from button)
 
-## 9. Improving the Cropping Strategy
+```yaml
+automation:
+  - alias: "Capture Plant Health on Button Press"
+    trigger:
+      - platform: state
+        entity_id: input_button.plant_health_capture
+    action:
+      - service: rest_command.plant_health_capture
+```
 
-- The current approach splits the frame into a 4x4 grid if no objects are detected, maximizing the chance of capturing leaves.
-- You can adjust the grid size in the script (see `grid_rows, grid_cols = 4, 4`).
-- For more advanced cropping, consider overlapping crops or using a sliding window in the future.
+### Generic Camera (show latest crop image)
+
+```yaml
+camera:
+  - platform: generic
+    name: Latest Plant Crop
+    still_image_url: >
+      http://<PI_IP>:5000/crops/{{ state_attr('sensor.plant_crop_list', 'crops')[-1] if state_attr('sensor.plant_crop_list', 'crops') }}
+    content_type: image/jpeg
+```
 
 ---
 
-- The first run will download YOLOv5 weights (requires internet).
-- For dataset building, crops are saved on every trigger. You can disable this later for production.
-- Check the `leaf_crops/` folder for results and manage disk space as needed.
+## 4. Lovelace UI (manual step)
+
+The following UI elements must be added via the Lovelace dashboard editor (not possible in configuration.yaml):
+
+### Button Card (trigger detection)
+
+```yaml
+type: button
+name: Capture Plant Health
+entity: input_button.plant_health_capture
+show_state: false
+tap_action:
+  action: call-service
+  service: rest_command.plant_health_capture
+```
+
+### Entity Card (show crop count)
+
+```yaml
+type: entity
+entity: sensor.plant_crop_list
+name: Crop Count
+```
+
+### Picture Entity Card (show latest crop)
+
+```yaml
+type: picture-entity
+entity: camera.latest_plant_crop
+name: Latest Plant Crop
+```
+
+### (Optional) Manual Crop Gallery
+
+For a gallery of all crops, you can manually add multiple `picture` cards, or use a custom card (e.g., [gallery-card](https://github.com/TarheelGrad/gallery-card)) and point to the crop URLs from the REST sensor attributes. Dynamic galleries require a custom card or manual YAML editing in the dashboard.
 
 ---
 
-For troubleshooting or advanced configuration, see the main project specs or contact the maintainer.
+## 5. Automation via Cron (optional)
+
+You can also automate detection on a schedule using cron on the Pi:
+
+```cron
+0 * * * * curl -X POST http://localhost:5000/plant_health/capture_and_detect
+```
+
+---
+
+## 6. Browser-Based Labeling
+
+Open `http://<PI_IP>:5000/crops/<filename>` in your browser to view and label crops. You can build a simple HTML/JS page to display and label images using the crop URLs from the REST API.
+
+---
+
+## 7. Troubleshooting
+
+- Ensure the Flask server is running and accessible from Home Assistant.
+- Replace `<PI_IP>` with your Pi's actual IP address.
+- Check Home Assistant logs for REST sensor/command errors.
+- For advanced UI (dynamic gallery), use Lovelace custom cards or manual configuration.
+
+---
+
+## 8. References
+
+- [Home Assistant RESTful Sensor](https://www.home-assistant.io/integrations/rest/)
+- [Home Assistant REST Command](https://www.home-assistant.io/integrations/rest_command/)
+- [Home Assistant Generic Camera](https://www.home-assistant.io/integrations/camera.generic/)
+- [Lovelace Gallery Card](https://github.com/TarheelGrad/gallery-card)
+
+---
+
+This guide provides a complete backend YAML setup for the plant health check pipeline. For advanced UI, use the Lovelace dashboard editor or custom cards as described above. All backend automation and integration is handled via configuration.yaml; only the UI gallery and dynamic image display require manual steps in the dashboard.
