@@ -1,5 +1,7 @@
 # Pi Central Server & Webcam Streaming
 
+[← Back to main documentation](../README.md) | [Pico documentation](../pico/README.md) | [Pico W documentation](../pico-w/README.md)
+
 This folder contains the code for the central Raspberry Pi server in the plant monitoring and watering system. The Pi acts as a hub, collecting sensor data from the Pico, providing a REST API for the Pico-W, and streaming live video from a connected webcam.
 
 ## Features

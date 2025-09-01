@@ -33,28 +33,34 @@ This project is a comprehensive plant monitoring and watering automation system 
 - USB serial and WiFi communication between components
 - Configurable deployment with systemd/cron support
 
-## Folder Structure
+## Component Documentation
 
-- `pi/` — Central hub with Flask server, webcam streaming, and plant health analysis
-  - REST API for sensor data
-  - YOLOv5-based leaf detection
-  - Real-time video streaming
-  - Data collection from Pico
+### [`pi/`](pi/README.md) — Central Hub
+- Flask server for webcam streaming and API
+- YOLOv5-based leaf detection
+- Real-time video streaming
+- Data collection from Pico
+- [View Pi documentation →](pi/README.md)
 
-- `pico/` — Sensor module (Raspberry Pi Pico)
-  - Temperature/humidity (DHT11) monitoring
-  - Soil moisture sensing
-  - LCD status display
-  - RGB LED indicators
-  - USB serial communication
+### [`pico/`](pico/README.md) — Sensor Module
+- Temperature/humidity (DHT11) monitoring
+- Soil moisture sensing
+- LCD status display
+- RGB LED indicators
+- USB serial communication
+- [View Pico documentation →](pico/README.md)
 
-- `pico-w/` — Watering control module (Raspberry Pi Pico W)
-  - WiFi connectivity
-  - Relay control for water pump
-  - REST API integration
-  - Automated watering logic
+### [`pico-w/`](pico-w/README.md) — Watering Controller
+- WiFi connectivity
+- Relay control for water pump
+- REST API integration
+- Automated watering logic
+- [View Pico W documentation →](pico-w/README.md)
 
-- `.specs/` — Documentation and specifications
+### `.specs/` — Documentation and specifications
+- Configuration examples
+- Troubleshooting guides
+- Component diagrams
   - Configuration examples
   - Troubleshooting guides
   - Component diagrams

@@ -1,5 +1,7 @@
 # PI-Pico-W Watering Controller
 
+[← Back to main documentation](../README.md) | [Pi documentation](../pi/README.md) | [Pico documentation](../pico/README.md)
+
 This folder contains the code for the Raspberry Pi Pico-W device used in the plant watering system. The Pico-W acts as a WiFi-enabled controller that receives soil moisture data from the central Pi and controls a relay (for a water pump or valve) accordingly.
 
 ## Features

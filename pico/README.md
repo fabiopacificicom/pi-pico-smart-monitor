@@ -1,5 +1,7 @@
 # PI-Pico Plant Monitoring Device
 
+[← Back to main documentation](../README.md) | [Pi documentation](../pi/README.md) | [Pico W documentation](../pico-w/README.md)
+
 This folder contains the code for the Raspberry Pi Pico device used in the plant watering and monitoring system. The Pico is responsible for reading environmental sensors, displaying information, and communicating with the central Raspberry Pi (Pi) for monitoring and automation.
 
 ## Features
