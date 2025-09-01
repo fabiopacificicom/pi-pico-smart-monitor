@@ -1,5 +1,9 @@
 # Pi-Pico Smart Monitor
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/fabiopacificicom/pi-pico-smart-monitor)](https://github.com/fabiopacificicom/pi-pico-smart-monitor/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 This project is a comprehensive plant monitoring and watering automation system using a three-component architecture:
 
 - **Raspberry Pi (Hub)**: Central server providing webcam streaming, sensor data API, and plant health analysis using computer vision.
