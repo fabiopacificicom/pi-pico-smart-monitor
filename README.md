@@ -1,39 +1,133 @@
 # Pi-Pico Smart Monitor
 
-This project is a smart monitoring system using a Raspberry Pi (3B) and a Raspberry Pi Pico (or Pico W) for home and plant environment monitoring. It features:
+This project is a comprehensive plant monitoring and watering automation system using a three-component architecture:
 
-- **Raspberry Pi**: Runs a Flask server to provide a REST API for sensor data and a webcam video stream. Integrates with Home Assistant for smart home dashboards.
-- **Raspberry Pi Pico**: Reads temperature, humidity, and soil moisture sensors, displays data on an LCD, and sends readings to the Pi via USB serial.
-- **Home Assistant Integration**: RESTful sensor configuration allows real-time monitoring of plant and environment data in Home Assistant dashboards.
+- **Raspberry Pi (Hub)**: Central server providing webcam streaming, sensor data API, and plant health analysis using computer vision.
+- **Raspberry Pi Pico (Sensors)**: Reads environmental data (temperature, humidity, soil moisture), provides visual feedback via LCD and RGB LED.
+- **Raspberry Pi Pico W (Controller)**: WiFi-enabled watering controller that activates a pump/valve based on sensor data from the hub.
 
 ## Features
 
-- Live webcam streaming from the Pi
-- REST API endpoint for sensor data: `/pico/sensors` (returns JSON with `temp`, `humi`, `moisture`)
-- LCD display and RGB LED feedback on the Pico
-- Soil moisture alerting and visual feedback
-- WiFi and static IP configuration for flexible deployment
-- Systemd and cron job options for auto-starting the server on boot
+### Monitoring & Analysis
+
+- Live webcam streaming with plant health analysis
+- Automated leaf detection and crop analysis using YOLOv5
+- Environmental sensor data tracking (temperature, humidity, soil moisture)
+- Visual feedback through LCD display and RGB LED indicators
+
+### Automation & Control
+
+- Smart watering system with configurable thresholds
+- Relay control for water pump/valve automation
+- Real-time moisture level monitoring and alerts
+- Fail-safe operation with error handling
+
+### Integration & API
+
+- Complete REST API for sensor data and plant analysis
+- Home Assistant integration for smart home dashboards
+- USB serial and WiFi communication between components
+- Configurable deployment with systemd/cron support
 
 ## Folder Structure
 
-- `pi/` — Flask server, REST API, and webcam code for the Raspberry Pi
-- `pico/` — MicroPython code for the Pico, including sensor reading and serial communication
-- `.specs/` — Project plans, troubleshooting, and documentation
+- `pi/` — Central hub with Flask server, webcam streaming, and plant health analysis
+  - REST API for sensor data
+  - YOLOv5-based leaf detection
+  - Real-time video streaming
+  - Data collection from Pico
+
+- `pico/` — Sensor module (Raspberry Pi Pico)
+  - Temperature/humidity (DHT11) monitoring
+  - Soil moisture sensing
+  - LCD status display
+  - RGB LED indicators
+  - USB serial communication
+
+- `pico-w/` — Watering control module (Raspberry Pi Pico W)
+  - WiFi connectivity
+  - Relay control for water pump
+  - REST API integration
+  - Automated watering logic
+
+- `.specs/` — Documentation and specifications
+  - Configuration examples
+  - Troubleshooting guides
+  - Component diagrams
 
 ## Getting Started
 
-1. Flash the Pico with the MicroPython firmware and upload the code in `pico/`.
-2. Set up the Pi with Python, Flask, and OpenCV (`pip install flask opencv-python`).
-3. Configure WiFi and static IP using netplan if needed.
-4. Start the Flask server (`python3 pi/main.py`) or set up auto-start with cron or systemd.
-5. Integrate with Home Assistant using the RESTful sensor configuration.
+### 1. Set up the Sensor Module (Pico)
 
-## REST API Example
+1. Flash MicroPython firmware to the Pico
+2. Upload all files from `pico/` to the device
+3. Connect sensors: DHT11 (GPIO1), moisture (GPIO14), LCD (I2C: GPIO4/5), LED (GPIO15)
 
-```
+### 2. Configure the Hub (Raspberry Pi)
+
+1. Install dependencies:
+
+   ```bash
+   pip install flask opencv-python pyserial torch torchvision
+   ```
+
+2. Connect the Pico via USB
+3. Start the server: `python3 pi/main.py`
+4. Optional: Set up auto-start with systemd/cron
+
+### 3. Prepare the Watering Module (Pico W)
+
+1. Flash MicroPython firmware to the Pico W
+2. Upload files from `pico-w/` to the device
+3. Configure WiFi settings in `main.py`
+4. Connect the relay module to GPIO15
+
+### 4. Integration
+
+1. Access the dashboard at `http://<pi-ip>:5000/`
+2. Set up Home Assistant integration using the configuration below
+3. Test the complete system:
+   - Check sensor readings
+   - Verify webcam stream
+   - Test leaf detection
+   - Confirm watering automation
+
+## REST API Reference
+
+### Sensor Data
+
+```http
 GET http://<pi-ip>:5000/pico/sensors
-Response: {"temp": 20, "humi": 60, "moisture": 1}
+Response: {
+  "temp": 20,
+  "humi": 60,
+  "moisture": 1
+}
+```
+
+### Plant Health Analysis
+
+```http
+POST http://<pi-ip>:5000/plant_health/capture_and_detect
+Response: {
+  "status": "ok",
+  "num_crops": 4,
+  "crops": ["/crops/capture_crop_0_leaf.jpg", ...]
+}
+```
+
+### Image Retrieval
+
+```http
+GET http://<pi-ip>:5000/crops/<filename>
+Response: Binary image data (JPEG)
+```
+
+### Video Stream
+
+```http
+GET http://<pi-ip>:5000/video_feed
+Response: MJPEG stream
 ```
 
 ## Home Assistant Example
