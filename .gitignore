@@ -1,0 +1,2 @@
+# Ignore local device config files
+pico-w/config.py

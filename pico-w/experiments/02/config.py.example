@@ -1,0 +1,69 @@
+
+"""
+Example device configuration for Pico-W.
+Copy this to `pico-w/config.py` on the device (do NOT commit that file).
+
+Customize these values on-device to tune behavior without changing source code.
+"""
+
+# -----------------------------
+# Hardware pins
+# -----------------------------
+# ADC_PIN: GP number for ADC0 (GP26)
+ADC_PIN = 26
+# DIGITAL_SENSOR_PIN: optional digital sensor DO pin
+DIGITAL_SENSOR_PIN = 18
+# RELAY_PIN: control pin for relay input
+RELAY_PIN = 15
+
+# -----------------------------
+# Pin polarity / behavior
+# -----------------------------
+# Set True if digital sensor drives HIGH when wet
+DIGITAL_WET_HIGH = True
+# Relay board active-low (IN=0 energizes relay)
+RELAY_ACTIVE_LOW = True
+
+# -----------------------------
+# Sensor calibration (u16 ADC)
+# -----------------------------
+# Values measured during calibration for your sensor
+DRY_ADC = 37000
+WET_ADC = 15000
+# Implausible extremes treated as sensor fault
+SENSOR_RAW_DISCONNECTED = 65000
+SENSOR_RAW_DISCONNECTED_LOW = 0
+
+# -----------------------------
+# Sampling / smoothing
+# -----------------------------
+MA_WINDOW = 4           # moving-average window size
+SAMPLE_INTERVAL = 2.0   # seconds between ADC samples
+
+# -----------------------------
+# Thresholds / hysteresis
+# -----------------------------
+START_WATER_PERCENT = 30
+STOP_WATER_PERCENT = 60
+
+# -----------------------------
+# Start/stop rules & debounce
+# -----------------------------
+REQUIRED_CONSECUTIVE = 4
+BOOT_DELAY_SECONDS = 8
+
+# -----------------------------
+# Safety / timing (seconds)
+# -----------------------------
+MAX_WATERING_TIME = 3
+MIN_INTERVAL_BETWEEN_WATERING = 30
+
+# -----------------------------
+# Telemetry / Wi-Fi / OTA
+# -----------------------------
+ENABLE_WIFI = True
+WIFI_SSID = ''
+WIFI_PASSWORD = ''
+TELEMETRY_URL = 'http://192.168.1.120:5000/pico/sensors'
+TELEMETRY_INTERVAL = 60
+
